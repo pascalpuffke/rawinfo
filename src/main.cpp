@@ -37,7 +37,7 @@ constexpr bool stringEmpty(const char* str)
     return str == nullptr || str[0] == '\0';
 }
 
-void printMetadata(LibRaw& rawData, CommandlineOptions& options)
+void printMetadata(const LibRaw& rawData, const CommandlineOptions& options)
 {
     auto imgdata = rawData.imgdata;
     auto sizes = imgdata.sizes;
@@ -183,7 +183,7 @@ void printMetadata(LibRaw& rawData, CommandlineOptions& options)
     }
 }
 
-void populateArrays(const fs::path& path, CommandlineOptions& options)
+void populateArrays(const fs::path& path, const CommandlineOptions& options)
 {
     ASSERT_MSG(exists(path), "File does not exist");
     LibRaw raw {};
@@ -209,11 +209,11 @@ void populateArrays(const fs::path& path, CommandlineOptions& options)
         printMetadata(raw, options);
 }
 
-std::vector<fs::path> findRawFiles(const std::vector<std::string>& root)
+std::vector<fs::path> findRawFiles(const std::vector<std::string>& directories)
 {
     std::vector<fs::path> files {};
     std::size_t count { 0 };
-    for (auto& directory : root) {
+    for (auto& directory : directories) {
         for (auto& entry : fs::recursive_directory_iterator(directory)) {
             if (!entry.is_regular_file())
                 continue;
