@@ -7,19 +7,27 @@ using Clock = std::chrono::system_clock;
 using namespace std::chrono_literals;
 
 // Workaround for incomplete std chrono implementation :^)
-constexpr auto day = 24h;
-constexpr auto week = 7 * day;
-constexpr auto month = 30 * day; // Let's just assume that a month is always 30 days
-constexpr auto year = 365 * day; // Let's not bother with leap years
+static constexpr auto day = 24h;
+static constexpr auto week = 7 * day;
+static constexpr auto month = 30 * day; // Let's just assume that a month is always 30 days
+static constexpr auto year = 365 * day; // Let's not bother with leap years
 
-constexpr auto secondsInMinute = 60;
-constexpr auto secondsInHour = 60 * secondsInMinute;
-constexpr auto secondsInDay = 24 * secondsInHour;
-constexpr auto secondsInWeek = 7 * secondsInDay;
-constexpr auto secondsInMonth = 30 * secondsInDay;
-constexpr auto secondsInYear = 365 * secondsInDay;
+static constexpr auto secondsInMinute = 60;
+static constexpr auto secondsInHour = 60 * secondsInMinute;
+static constexpr auto secondsInDay = 24 * secondsInHour;
+static constexpr auto secondsInWeek = 7 * secondsInDay;
+static constexpr auto secondsInMonth = 30 * secondsInDay;
+static constexpr auto secondsInYear = 365 * secondsInDay;
 
-template <typename TimeUnit = std::chrono::seconds>
+template <typename T>
+concept Duration = requires(T t)
+// clang-format off
+{
+    { t.count() } -> std::convertible_to<std::chrono::seconds::rep>;
+};
+// clang-format on
+
+template <Duration TimeUnit = std::chrono::seconds>
 constexpr auto timeDifference(const std::time_t& start, const std::time_t& end)
 {
     return std::chrono::duration_cast<TimeUnit>(Clock::from_time_t(end) - Clock::from_time_t(start));
@@ -52,6 +60,7 @@ std::string TimeUtils::formatTimeSpan(const std::time_t start, const std::time_t
     }
     // Now the chrono library begins to fall apart, yay!
     if (duration < day) {
+        // TODO These checks get progressively more useless. Stop using second-precision after this point.
         if (seconds % secondsInHour == 0)
             return fmt::format("{} hours", duration / 1h);
         return fmt::format("{} hours, {} minutes", duration / 1h, duration % 1h / 1min);
