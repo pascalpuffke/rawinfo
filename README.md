@@ -52,17 +52,37 @@ Boolean options `show{Camera,Lens,Size,Timestamp,Software,CameraType,Quality}` a
 
 - [cxxopts](https://github.com/jarro2783/cxxopts): Command-line argument parsing
 
-On Arch Linux, you can easily install these with `# pacman -S cmake libraw fmt cxxopts`.
-You will also need a modern C++20 compatible compiler, but I think that goes without saying.
+**Arch Linux**
 
-Build this like any other CMake project:
+``# pacman -S cmake gcc libraw fmt cxxopts``
+
+**Ubuntu**
+
+``# apt install cmake g++ libraw-dev libfmt-dev libcxxopts-dev``
+
+### Building
+
+
 
 ```bash
-# If you have not yet done so, install the dependencies before building
 git clone https://github.com/pascalpuffke/rawinfo
 cd rawinfo
+
+# For some reason I couldn't get git submodules working and I can't be bothered to fix it, so you will need to clone the LibRaw and LibRaw-cmake repositories manually.
+git clone https://github.com/LibRaw/LibRaw
+git clone https://github.com/LibRaw/LibRaw-cmake
+mkdir LibRaw-cmake/libraw
+cp LibRaw/libraw/libraw_version.h LibRaw-cmake/libraw/
+
 mkdir build
 cd build
+
 cmake ..
 cmake --build .
 ```
+
+Should generating the build files fail (`cmake ..`) with the message `No SOURCES given to target: raw`, you will need to set the `LIBRAW_PATH` variable.
+
+`cmake -DLIBRAW_PATH=/absolute/path/to/LibRaw/ ..`
+
+I might eventually put all this into a bash script.
