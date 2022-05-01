@@ -30,8 +30,6 @@ namespace chrono = std::chrono;
 using fmt::print, fmt::fg, fmt::bg, fmt::color;
 using Clock = chrono::system_clock;
 
-Data data {};
-
 constexpr bool stringEmpty(const char* str)
 {
     return str == nullptr || str[0] == '\0';
@@ -183,7 +181,7 @@ void printMetadata(const LibRaw& rawData, const CommandlineOptions& options)
     }
 }
 
-void populateArrays(const fs::path& path, const CommandlineOptions& options)
+void populateArrays(Data* data, const fs::path& path, const CommandlineOptions& options)
 {
     ASSERT_MSG(exists(path), "File does not exist");
     LibRaw raw {};
@@ -196,20 +194,20 @@ void populateArrays(const fs::path& path, const CommandlineOptions& options)
     auto lensInfo = imgdata.lens;
     auto lens = FormatUtils::formatLens(lensInfo);
 
-    data.timestamps.push_back(other.timestamp);
-    data.iso_speeds.push_back(other.iso_speed);
-    data.shutter_speeds.push_back(other.shutter);
-    data.focal_lengths.push_back(other.focal_len);
-    data.aperture_values.push_back(other.aperture);
-    data.resolutions.push_back(static_cast<float>(sizes.width * sizes.height));
-    data.lenses[lens]++;
-    data.cameras[fmt::format("{} {}", meta.make, meta.model)]++;
+    data->timestamps.push_back(other.timestamp);
+    data->iso_speeds.push_back(other.iso_speed);
+    data->shutter_speeds.push_back(other.shutter);
+    data->focal_lengths.push_back(other.focal_len);
+    data->aperture_values.push_back(other.aperture);
+    data->resolutions.push_back(static_cast<float>(sizes.width * sizes.height));
+    data->lenses[lens]++;
+    data->cameras[fmt::format("{} {}", meta.make, meta.model)]++;
 
     if (!options.silent)
         printMetadata(raw, options);
 }
 
-std::vector<fs::path> findRawFiles(const std::vector<std::string>& directories)
+std::vector<fs::path> findRawFiles(Data* data, const std::vector<std::string>& directories)
 {
     std::vector<fs::path> files {};
     std::size_t count { 0 };
@@ -227,7 +225,7 @@ std::vector<fs::path> findRawFiles(const std::vector<std::string>& directories)
             }
         }
     }
-    data.reserveCapacity(count);
+    data->reserveCapacity(count);
 
     return files;
 }
@@ -290,8 +288,9 @@ int main(int argc, char** argv)
         .showCameraType = result["showCameraType"].as<bool>(),
         .showQuality = result["showQuality"].as<bool>(),
     };
+    auto data = std::make_unique<Data>();
+    auto files = findRawFiles(data.get(), result["directories"].as<std::vector<std::string>>());
 
-    auto files = findRawFiles(result["directories"].as<std::vector<std::string>>());
     for (auto& file : result["files"].as<std::vector<std::string>>()) {
         files.emplace_back(file);
     }
@@ -309,7 +308,7 @@ int main(int argc, char** argv)
             print(bg(color::dark_slate_gray) | fg(color::white), ":");
             print("\n");
         }
-        populateArrays(file, commandLineOptions);
+        populateArrays(data.get(), file, commandLineOptions);
     }
 
     // Do not print summary if we're processing a single file.
@@ -340,23 +339,23 @@ int main(int argc, char** argv)
         print("{}\n", format(median));
     };
 
-    data.assertNotEmpty();
-    data.assertEqualSizes();
+    data->assertNotEmpty();
+    data->assertEqualSizes();
 
-    std::sort(ITERATORS(data.timestamps));
-    print("Analyzed {} photos in {}ms ({:.02f}ms/photo)\n", data.iso_speeds.size(), time.count(), time.count() / static_cast<float>(data.iso_speeds.size()));
+    std::sort(ITERATORS(data->timestamps));
+    print("Analyzed {} photos in {}ms ({:.02f}ms/photo)\n", data->iso_speeds.size(), time.count(), time.count() / static_cast<float>(data->iso_speeds.size()));
     print(fg(color::cyan), "Time frame: ");
-    print("{} ", TimeUtils::formatISO8601(data.timestamps.front()));
+    print("{} ", TimeUtils::formatISO8601(data->timestamps.front()));
     print(fg(color::gray), "-");
-    print(" {} ", TimeUtils::formatISO8601(data.timestamps.back()));
-    print(fg(color::gray), "({})\n", TimeUtils::formatTimeSpan(data.timestamps.front(), data.timestamps.back()));
-    printVector(data.iso_speeds, "ISO speeds", FormatUtils::formatISO);
-    printVector(data.shutter_speeds, "Shutter speeds", FormatUtils::formatShutterSpeed);
-    printVector(data.focal_lengths, "Focal lengths", FormatUtils::formatFocalLength);
-    printVector(data.aperture_values, "Aperture", FormatUtils::formatAperture);
-    printVector(data.resolutions, "Resolutions", FormatUtils::formatResolution);
+    print(" {} ", TimeUtils::formatISO8601(data->timestamps.back()));
+    print(fg(color::gray), "({})\n", TimeUtils::formatTimeSpan(data->timestamps.front(), data->timestamps.back()));
+    printVector(data->iso_speeds, "ISO speeds", FormatUtils::formatISO);
+    printVector(data->shutter_speeds, "Shutter speeds", FormatUtils::formatShutterSpeed);
+    printVector(data->focal_lengths, "Focal lengths", FormatUtils::formatFocalLength);
+    printVector(data->aperture_values, "Aperture", FormatUtils::formatAperture);
+    printVector(data->resolutions, "Resolutions", FormatUtils::formatResolution);
 
-    for (auto& [lens, count] : data.lenses) {
+    for (auto& [lens, count] : data->lenses) {
         print(fg(color::cyan), "Lens '{}': ", lens);
         if (count == 1)
             print("1 photo\n");
@@ -364,7 +363,7 @@ int main(int argc, char** argv)
             print("{} photos\n", count);
     }
 
-    for (auto& [camera, count] : data.cameras) {
+    for (auto& [camera, count] : data->cameras) {
         print(fg(color::cyan), "Camera '{}': ", camera);
         if (count == 1)
             print("1 photo\n");
